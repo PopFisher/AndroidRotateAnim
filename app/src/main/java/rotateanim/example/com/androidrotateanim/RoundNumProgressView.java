@@ -14,7 +14,6 @@ import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.View;
 
-
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -30,20 +29,20 @@ public class RoundNumProgressView extends View {
     private static final int ROUND_PROGRESS_COLOR_DEFAULT = 0xffffffff;
     private static final int PERCENT_TEXTCOLOR_DEFAULT = 0xffffffff;
     private static final int PERCENT_TEXTSIZE_DEFAULT = 9; //sp
-    private static final int MAXPROGRESS_DEFAULT = 100;
+    private static final int MAX_PROGRESS_DEFAULT = 100;
     /** 允许显示的最大最小值 - 这个与mMaxProgress和 mMinProgress不一样 */
     private static final int ALLOW_SHOW_MAX = 95;
     private static final int ALLOW_SHOW_MIN = 5;
     private static final int PERCENT_BASE = 100;
 
     /** 正常累加进度每次移动的角度 */
-    private static final int NORMAL_PRORESS_STEP = 2;
+    private static final int NORMAL_PROGRESS_STEP = 2;
     /** 闪烁进度条每次移动的角度 */
-    private static final int FLICKER_PRORESS_STEP = 40;
+    private static final int FLICKER_PROGRESS_STEP = 40;
     private static final int TOTAL_DEGREE = 360;
     /** 闪烁进度的时候，画的弧长 */
     private static final int FLICKER_ARC_LENGTH = 270;
-    /** 顶部作为计数起点 */
+    /** 顶部作为计数起点, 右边是0，左边是-180或者180，底部是90 */
     private static final int START_POINT_TOP = -90;
 
     /** 定义一支画笔 */
@@ -125,7 +124,7 @@ public class RoundNumProgressView extends View {
         final float roundWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, ROUND_WIDTH_DEFAULT, metrics);
         mPercentTextSize = mTypedArray.getDimension(R.styleable.RoundNumProgressView_percentTextSize, textSize);
         mRoundWidth = mTypedArray.getDimension(R.styleable.RoundNumProgressView_roundWidth, roundWidth);
-        mMaxProgress = mTypedArray.getInteger(R.styleable.RoundNumProgressView_maxProgress, MAXPROGRESS_DEFAULT);
+        mMaxProgress = mTypedArray.getInteger(R.styleable.RoundNumProgressView_maxProgress, MAX_PROGRESS_DEFAULT);
         isPercentTextDisplayable = mTypedArray.getBoolean(R.styleable.RoundNumProgressView_percentTextDisplayable, true);
         mStyle = mTypedArray.getInt(R.styleable.RoundNumProgressView_style, STROKE);
         mRotateOrientation = mTypedArray.getInt(R.styleable.RoundNumProgressView_rotateOrientation, COUNTERCLOCKWISE);
@@ -150,11 +149,17 @@ public class RoundNumProgressView extends View {
         }
     }
 
+    int centerX = 0;      // 获取圆心的x坐标
+    int radius = 0;       // 圆环的半径
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        final int centerX = getWidth() / 2;                         // 获取圆心的x坐标
-        final int radius = (int) (centerX - mRoundWidth / 2);       // 圆环的半径
+        if (centerX == 0) {
+            centerX = getWidth() / 2;                         // 获取圆心的x坐标
+        }
+        if (radius == 0) {
+            radius = (int) (centerX - mRoundWidth / 2);       // 圆环的半径
+        }
         // 画最外层的大圆环
         drawOuterCircle(canvas, centerX, radius);
         // 画进度百分比
@@ -192,7 +197,9 @@ public class RoundNumProgressView extends View {
         mPaint.setStrokeWidth(mRoundWidth);         // 设置圆环的宽度
         mPaint.setColor(mRoundProgressColor);       // 设置进度的颜色
         // 用于定义的圆弧的形状和大小的界限
-        mArcLimitRect.set(centerX - radius, centerX - radius, centerX + radius, centerX + radius);
+        if (mArcLimitRect.isEmpty()) {
+            mArcLimitRect.set(centerX - radius, centerX - radius, centerX + radius, centerX + radius);
+        }
         if (mStyle == STROKE) {
             mPaint.setStyle(Paint.Style.STROKE);
         } else if (mStyle == FILL) {
@@ -210,7 +217,9 @@ public class RoundNumProgressView extends View {
         mGradientArcPaint.setStrokeWidth(mRoundWidth);         // 设置圆环的宽度
         mGradientArcPaint.setColor(mRoundProgressColor);       // 设置进度的颜色
         mGradientArcPaint.setAntiAlias(true);
-        mArcLimitRect.set(centerX - radius, centerX - radius, centerX + radius, centerX + radius);
+        if (mArcLimitRect.isEmpty()) {
+            mArcLimitRect.set(centerX - radius, centerX - radius, centerX + radius, centerX + radius);
+        }
         mGradientArcPaint.setStyle(Paint.Style.STROKE);
         // 定义一个梯度渲染，由于梯度渲染是从三点钟方向开始，所以再让他逆时针旋转90°，从0点开始
         if (mSweepGradient == null)
@@ -222,7 +231,7 @@ public class RoundNumProgressView extends View {
         post(new Runnable() {
             @Override
             public void run() {
-                mFlickerProgressTotal += FLICKER_PRORESS_STEP;
+                mFlickerProgressTotal += FLICKER_PROGRESS_STEP;
                 postInvalidate();
             }
         });
@@ -270,7 +279,7 @@ public class RoundNumProgressView extends View {
                     setCurProgress(toProgress);
                     return;
                 }
-                setCurProgress(mTempCurProgress += NORMAL_PRORESS_STEP);
+                setCurProgress(mTempCurProgress += NORMAL_PROGRESS_STEP);
                 post(this);
             }
         });

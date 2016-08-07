@@ -6,35 +6,37 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.SweepGradient;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.View;
 
-import java.util.Iterator;
-import java.util.Vector;
-
 /**
- * 渐变圆弧
+ * 渐变圆弧实现进度条-这个才用画圆弧的方式来实现
  */
-public class GradientArcView extends View {
+public class GradientArcProgressView2 extends View {
 
     private static final int ROUND_COLOR_DEFAULT = 0x33ffffff;
     private static final int ROUND_WIDTH_DEFAULT = 2; //dp
     private static final int ROUND_PROGRESS_COLOR_DEFAULT = 0xffffffff;
 
     /** 闪烁进度条每次移动的角度 */
-    private static final int FLICKER_PRORESS_STEP = 40;
+    private static final int FLICKER_PROGRESS_STEP = 10;
     /** 顶部作为计数起点, 右边是0，左边是-180或者180，底部是90 */
     private static final int START_POINT_TOP = -90;
+
+    /** 弧长及方向 */
+    private static final int ARC_LENGTH = -180;
 
     /** 定义一支画笔 */
     private Paint mPaint;
     private Paint mGradientArcPaint;
     private SweepGradient mSweepGradient;
+    /** 修改这个颜色数组就会出现不一样的渐变圆弧 */
     private int[] mColors = {
-            0x00ffffff, 0x40ffffff, 0x80ffffff, Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE, 0x80ffffff, 0x40ffffff, 0x00ffffff
+            0x00ffffff, 0x40ffffff, 0x80ffffff, Color.WHITE
     };
     private Matrix mMatrix = new Matrix();
     /** 圆环的颜色 */
@@ -43,34 +45,33 @@ public class GradientArcView extends View {
     private float mRoundWidth;
     /** 圆环进度的颜色 */
     private int mRoundProgressColor;
+    /** 用于定义的圆弧的形状和大小的界限 */
+    private RectF mArcLimitRect = new RectF();
+
+    /** 进度的风格，实心(FILL)或者空心(STROKE) */
+    private int mStyle;
+    public static final int STROKE = 0;
+    public static final int FILL = 1;
 
     /** 进度旋转方向，顺时针(CLOCKWISE)或者逆时针(COUNTERCLOCKWISE) */
     private int mRotateOrientation;
     public static final int COUNTERCLOCKWISE = 0;
     public static final int CLOCKWISE = 1;
 
-    /** 闪烁（循环旋转）进度条的时间 */
-    private int mFlickerProgressTime = 1000;
     private int mFlickerProgressTotal = 0;
 
     /** 闪烁进度条动画正在进行 */
     private boolean isFlickerProgressWorking = false;
 
-    private Vector<IRoundNumProgressListener> mRoundNumProgressListeners;
-
-    public interface IRoundNumProgressListener {
-        void onFlickerProgressEnd();
-    }
-
-    public GradientArcView(Context context) {
+    public GradientArcProgressView2(Context context) {
         this(context, null);
     }
 
-    public GradientArcView(Context context, AttributeSet attrs) {
+    public GradientArcProgressView2(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
     }
 
-    public GradientArcView(Context context, AttributeSet attrs, int defStyle) {
+    public GradientArcProgressView2(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
         mPaint = new Paint();
         mGradientArcPaint = new Paint();
@@ -81,26 +82,9 @@ public class GradientArcView extends View {
 
         final DisplayMetrics metrics = context.getResources().getDisplayMetrics();
         mRoundWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, ROUND_WIDTH_DEFAULT, metrics);
+        mStyle = mTypedArray.getInt(R.styleable.RoundNumProgressView_style, STROKE);
         mRotateOrientation = CLOCKWISE;
         mTypedArray.recycle();
-    }
-
-    public void addRoundNumProgressListener(IRoundNumProgressListener roundNumProgressListener) {
-        if (roundNumProgressListener == null)
-            return;
-        if (mRoundNumProgressListeners == null) {
-            mRoundNumProgressListeners = new Vector<IRoundNumProgressListener>();
-        }
-        mRoundNumProgressListeners.add(roundNumProgressListener);
-    }
-
-    private void notifyAllRoundNumProressListeners() {
-        if (mRoundNumProgressListeners == null)
-            return;
-        Iterator<IRoundNumProgressListener> iterator = mRoundNumProgressListeners.iterator();
-        while (iterator.hasNext()) {
-            iterator.next().onFlickerProgressEnd();
-        }
     }
 
     int centerX = 0;     // 获取圆心的x坐标
@@ -123,6 +107,9 @@ public class GradientArcView extends View {
             mGradientArcPaint.setStrokeWidth(mRoundWidth);         // 设置圆环的宽度
             mGradientArcPaint.setColor(mRoundProgressColor);       // 设置进度的颜色
             mGradientArcPaint.setAntiAlias(true);
+            if (mArcLimitRect.isEmpty()) {
+                mArcLimitRect.set(centerX - radius, centerX - radius, centerX + radius, centerX + radius);
+            }
             mGradientArcPaint.setStyle(Paint.Style.STROKE);
             // 定义一个梯度渲染，由于梯度渲染是从三点钟方向开始，所以再让他逆时针旋转90°，从0点开始
             if (mSweepGradient == null)
@@ -130,7 +117,8 @@ public class GradientArcView extends View {
             mMatrix.setRotate(START_POINT_TOP, centerX, centerX);
             mSweepGradient.setLocalMatrix(mMatrix);
             mGradientArcPaint.setShader(mSweepGradient);
-            canvas.drawCircle(centerX, centerX, radius, mGradientArcPaint); // 画出圆环
+            canvas.drawArc(mArcLimitRect, START_POINT_TOP, ARC_LENGTH, false, mGradientArcPaint);
+//            canvas.drawCircle(centerX, centerX, radius, mGradientArcPaint); // 画出圆环
         }
     }
 
@@ -147,7 +135,7 @@ public class GradientArcView extends View {
         post(new Runnable() {
             @Override
             public void run() {
-                mFlickerProgressTotal += FLICKER_PRORESS_STEP;
+                mFlickerProgressTotal += FLICKER_PROGRESS_STEP;
                 postInvalidate();
             }
         });
@@ -157,19 +145,23 @@ public class GradientArcView extends View {
         mGradientArcPaint.setStrokeWidth(mRoundWidth);         // 设置圆环的宽度
         mGradientArcPaint.setColor(mRoundProgressColor);       // 设置进度的颜色
         mGradientArcPaint.setAntiAlias(true);
+        if (mArcLimitRect.isEmpty()) {
+            mArcLimitRect.set(centerX - radius, centerX - radius, centerX + radius, centerX + radius);
+        }
         mGradientArcPaint.setStyle(Paint.Style.STROKE);
         // 定义一个梯度渲染，由于梯度渲染是从三点钟方向开始，所以再让他逆时针旋转90°，从0点开始
         if (mSweepGradient == null) {
             mSweepGradient = new SweepGradient(centerX, centerX, mColors, null);
         }
         if (mRotateOrientation == COUNTERCLOCKWISE) {   // 计数起点在顶部，所以为-90
-            mMatrix.setRotate(START_POINT_TOP - mFlickerProgressTotal, centerX, centerX);
+            mMatrix.setRotate((START_POINT_TOP - mFlickerProgressTotal) % 360, centerX, centerX);
         } else if (mRotateOrientation == CLOCKWISE) {
-            mMatrix.setRotate(START_POINT_TOP + mFlickerProgressTotal, centerX, centerX);
+            mMatrix.setRotate((START_POINT_TOP + mFlickerProgressTotal) % 360, centerX, centerX);
         }
         mSweepGradient.setLocalMatrix(mMatrix);
         mGradientArcPaint.setShader(mSweepGradient);
-        canvas.drawCircle(centerX, centerX, radius, mGradientArcPaint); // 画出圆环
+        canvas.drawArc(mArcLimitRect, (START_POINT_TOP + mFlickerProgressTotal) % 360, ARC_LENGTH, false, mGradientArcPaint);
+//        canvas.drawCircle(centerX, centerX, radius, mGradientArcPaint); // 画出圆环
     }
 
     /***
@@ -180,16 +172,9 @@ public class GradientArcView extends View {
             return;
         isFlickerProgressWorking = true;
         postInvalidate();
-        postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                isFlickerProgressWorking = false;
-                postInvalidate();
-                if (endFlagRunnable != null) {
-                    endFlagRunnable.run();
-                }
-                notifyAllRoundNumProressListeners();
-            }
-        }, mFlickerProgressTime);
+    }
+
+    public void setStyle(int style) {
+        mStyle = style;
     }
 }

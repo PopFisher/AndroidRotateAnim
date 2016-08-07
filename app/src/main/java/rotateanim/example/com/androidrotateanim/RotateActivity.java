@@ -1,5 +1,6 @@
 package rotateanim.example.com.androidrotateanim;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -137,6 +138,28 @@ public class RotateActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 gradientArcView.startFlickerArcProgress(mEndFlagRunnable);
+            }
+        });
+
+        final GradientArcProgressView gradientArcProgressView = new GradientArcProgressView(getBaseContext());
+        gradientArcProgressView.setLayoutParams(new ViewGroup.LayoutParams(numProgressView2Size, numProgressView2Size));
+        parent.addView(gradientArcProgressView);
+        ((LinearLayout.LayoutParams) gradientArcProgressView.getLayoutParams()).leftMargin = 30;
+        gradientArcProgressView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                gradientArcProgressView.startFlickerArcProgress(mEndFlagRunnable);
+            }
+        });
+
+        final GradientArcProgressView2 gradientArcProgressView2 = new GradientArcProgressView2(getBaseContext());
+        gradientArcProgressView2.setLayoutParams(new ViewGroup.LayoutParams(numProgressView2Size, numProgressView2Size));
+        parent.addView(gradientArcProgressView2);
+        ((LinearLayout.LayoutParams) gradientArcProgressView2.getLayoutParams()).leftMargin = 30;
+        gradientArcProgressView2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                gradientArcProgressView2.startFlickerArcProgress(mEndFlagRunnable);
             }
         });
     }
