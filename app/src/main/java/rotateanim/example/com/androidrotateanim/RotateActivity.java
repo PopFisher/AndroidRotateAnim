@@ -1,6 +1,7 @@
 package rotateanim.example.com.androidrotateanim;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -162,6 +163,14 @@ public class RotateActivity extends AppCompatActivity {
                 gradientArcProgressView2.startFlickerArcProgress(mEndFlagRunnable);
             }
         });
+
+        final CircleProgressView circleProgressView = new CircleProgressView(getBaseContext());
+        circleProgressView.setRoundProgressBgColor(0xff424045);
+        circleProgressView.setRoundProgressBgColor(Color.WHITE);
+        circleProgressView.setProgressColors(new int[] { 0x00535353, 0xff535353});
+        circleProgressView.setLayoutParams(new ViewGroup.LayoutParams(100, 100));
+        parent.addView(circleProgressView);
+        ((LinearLayout.LayoutParams) circleProgressView.getLayoutParams()).leftMargin = 30;
     }
 
     private void rotateOnXCoordinate() {
